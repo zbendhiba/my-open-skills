@@ -21,11 +21,21 @@ deployment/src/main/java/.../
 └── MyExtensionDevServices.java            # Constants: labels, ports, locator (optional)
 ```
 
-Plus a dependency in the deployment `pom.xml`:
+Plus dependencies:
+
+In the deployment `pom.xml`:
 ```xml
 <dependency>
     <groupId>io.quarkus</groupId>
     <artifactId>quarkus-devservices-deployment</artifactId>
+</dependency>
+```
+
+In the runtime `pom.xml` (required since Quarkus 3.31+, build fails without it, must NOT be optional):
+```xml
+<dependency>
+    <groupId>io.quarkus</groupId>
+    <artifactId>quarkus-devservices</artifactId>
 </dependency>
 ```
 
@@ -179,7 +189,7 @@ The processor manages container lifecycle in dev/test modes.
 ### Newer Pattern (Preferred -- Redis/Kafka style)
 
 ```java
-@BuildSteps(onlyIf = { IsDevServicesSupportedByLaunchMode.class, DevServicesConfig.Enabled.class })
+@BuildSteps(onlyIfNot = IsProduction.class, onlyIf = DevServicesConfig.Enabled.class)
 public class MyExtensionDevServicesProcessor {
 
     @BuildStep
@@ -192,8 +202,8 @@ public class MyExtensionDevServicesProcessor {
             BuildProducer<DevServicesResultBuildItem> devServicesResult,
             DevServicesConfig devServicesConfig) {
 
-        // Skip if Docker unavailable
-        if (!dockerStatusBuildItem.isDockerAvailable()) {
+        // Skip if container runtime unavailable
+        if (!dockerStatusBuildItem.isContainerRuntimeAvailable()) {
             return;
         }
 
@@ -360,7 +370,7 @@ import io.quarkus.deployment.builditem.DevServicesSharedNetworkBuildItem;
 import io.quarkus.deployment.builditem.DevServicesComposeProjectBuildItem;
 import io.quarkus.deployment.builditem.DockerStatusBuildItem;
 import io.quarkus.deployment.builditem.LaunchModeBuildItem;
-import io.quarkus.deployment.IsNormal;
+import io.quarkus.deployment.IsProduction;
 import io.quarkus.deployment.dev.devservices.DevServicesConfig;
 import io.quarkus.devservices.common.ConfigureUtil;
 import io.quarkus.devservices.common.ContainerLocator;
@@ -373,7 +383,7 @@ import org.testcontainers.utility.DockerImageName;
 ## Troubleshooting
 
 ### Dev Service doesn't start
-- Check Docker is running: `dockerStatusBuildItem.isDockerAvailable()`
+- Check container runtime is running: `dockerStatusBuildItem.isContainerRuntimeAvailable()`
 - Ensure `quarkus.<service>.host` is NOT set in `application.properties` (disables Dev Services)
 - Verify the Docker image name is correct and accessible
 

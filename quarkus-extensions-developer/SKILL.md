@@ -354,7 +354,7 @@ public class MyExtensionProcessor {
 - `@Record(ExecutionTime.RUNTIME_INIT)` — links to recorder, runs at runtime startup
 - `@Record(ExecutionTime.STATIC_INIT)` — runs during static initialization (native image compatible)
 - `@BuildSteps(onlyIf = {...})` — conditional processor class activation
-- `@BuildSteps(onlyIfNot = IsNormal.class)` — only in dev/test modes
+- `@BuildSteps(onlyIfNot = IsProduction.class)` — only in dev/test modes (note: `IsNormal` was deprecated in 3.25, use `IsProduction` instead)
 
 **Common build items produced:**
 - `FeatureBuildItem` — register extension feature name
@@ -451,11 +451,21 @@ If your extension connects to an external service that can run in Docker, add De
 - Post-startup resource initialization (Kafka topics, Keycloak realms, etc.)
 - Extension comparison table (PostgreSQL, Redis, Kafka, Keycloak, Elasticsearch)
 
-**Required dependency** in deployment `pom.xml`:
+**Required dependencies:**
+
+In deployment `pom.xml`:
 ```xml
 <dependency>
     <groupId>io.quarkus</groupId>
     <artifactId>quarkus-devservices-deployment</artifactId>
+</dependency>
+```
+
+In runtime `pom.xml` (required since Quarkus 3.31+, must NOT be optional):
+```xml
+<dependency>
+    <groupId>io.quarkus</groupId>
+    <artifactId>quarkus-devservices</artifactId>
 </dependency>
 ```
 
@@ -535,7 +545,7 @@ import io.quarkus.deployment.builditem.LaunchModeBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.RuntimeInitializedClassBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageResourceBuildItem;
-import io.quarkus.deployment.IsNormal;
+import io.quarkus.deployment.IsProduction;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
 import io.quarkus.arc.deployment.UnremovableBeanBuildItem;
@@ -564,3 +574,10 @@ import io.smallrye.config.ConfigGroup;
 ### Build item not found by other extensions
 - Move the build item class to a `deployment-spi/` or `spi/` module
 - Other extensions should depend on the SPI module, not the full deployment module
+
+### Quarkus 3.31+ / 3.33 LTS Migration
+- `IsNormal` deprecated since 3.25 — use `IsProduction` instead
+- `DockerStatusBuildItem.isDockerAvailable()` deprecated for removal — use `isContainerRuntimeAvailable()` instead
+- `DevServicesResultBuildItem.DiscoveredServiceBuilder.name()` deprecated since 3.31 — use `feature()` instead
+- `quarkus-junit5` relocated to `quarkus-junit` and `quarkus-junit5-internal` to `quarkus-junit-internal` — update artifactIds
+- Extensions with Dev Services **must** add `io.quarkus:quarkus-devservices` as optional runtime dependency (build fails otherwise)

@@ -438,12 +438,12 @@ public class MyClientHealthCheck implements HealthCheck {
 }
 ```
 
-**Pattern B — Separate health API interface** (when the main client has a class-level `@Path` that prevents reaching the health endpoint):
+**Pattern B — Internal health API interface** (when the main client has a class-level `@Path` that prevents reaching the health endpoint):
 
 If your main REST client interface has `@Path("/collections")` at class level, you cannot call a root-level endpoint like `GET /healthz` from it. Create a separate interface:
 
 ```java
-// Separate interface for health probing
+// Internal interface for health probing — NOT exposed as a CDI bean
 @Path("/")
 @Produces(MediaType.TEXT_PLAIN)
 public interface MyClientHealthApi {
@@ -454,7 +454,36 @@ public interface MyClientHealthApi {
 }
 ```
 
-Produce it alongside the main client in the CDI producer:
+**IMPORTANT:** Do NOT produce this as a CDI bean. The health API is an internal implementation detail of the extension, not something users should inject. The health check builds its own REST client internally:
+
+```java
+@Readiness
+@ApplicationScoped
+public class MyClientHealthCheck implements HealthCheck {
+
+    @Inject
+    MyClientConfig config;
+
+    @Override
+    public HealthCheckResponse call() {
+        HealthCheckResponseBuilder builder = HealthCheckResponse.named("My Client health check");
+        try {
+            String scheme = config.useTls() ? "https" : "http";
+            URI baseUri = URI.create(scheme + "://" + config.host() + ":" + config.port());
+            MyClientHealthApi client = RestClientBuilder.newBuilder()
+                    .baseUri(baseUri)
+                    .build(MyClientHealthApi.class);
+            client.healthz();
+            builder.up();
+        } catch (Exception e) {
+            return builder.down().withData("reason", e.getMessage()).build();
+        }
+        return builder.build();
+    }
+}
+```
+
+The CDI producer only exposes the main client API — no health-related beans leak to users:
 ```java
 @ApplicationScoped
 public class MyClientProducer {
@@ -463,62 +492,22 @@ public class MyClientProducer {
     MyClientConfig config;
 
     private MyClientApi client;
-    private MyClientHealthApi healthClient;
-
-    private URI baseUri() {
-        String scheme = config.useTls() ? "https" : "http";
-        return URI.create(scheme + "://" + config.host() + ":" + config.port());
-    }
 
     @Produces @Singleton @Default
     public MyClientApi createClient() {
-        RestClientBuilder builder = RestClientBuilder.newBuilder().baseUri(baseUri());
+        String scheme = config.useTls() ? "https" : "http";
+        URI baseUri = URI.create(scheme + "://" + config.host() + ":" + config.port());
+        RestClientBuilder builder = RestClientBuilder.newBuilder().baseUri(baseUri);
         config.apiKey().ifPresent(key -> builder.header("api-key", key));
         client = builder.build(MyClientApi.class);
         return client;
     }
 
-    @Produces @Singleton @Default
-    public MyClientHealthApi createHealthClient() {
-        healthClient = RestClientBuilder.newBuilder()
-                .baseUri(baseUri())
-                .build(MyClientHealthApi.class);
-        return healthClient;
-    }
-
     @PreDestroy
     public void close() {
-        safeClose(client);
-        safeClose(healthClient);
-    }
-
-    private void safeClose(Object obj) {
-        if (obj instanceof AutoCloseable closeable) {
+        if (client instanceof AutoCloseable closeable) {
             try { closeable.close(); } catch (Exception e) { /* ignore */ }
         }
-    }
-}
-```
-
-Then inject the health API in the health check:
-```java
-@Readiness
-@ApplicationScoped
-public class MyClientHealthCheck implements HealthCheck {
-
-    @Inject
-    MyClientHealthApi healthClient;
-
-    @Override
-    public HealthCheckResponse call() {
-        HealthCheckResponseBuilder builder = HealthCheckResponse.named("My Client health check").up();
-        try {
-            healthClient.healthz();
-            builder.up();
-        } catch (Exception e) {
-            return builder.down().withData("reason", e.getMessage()).build();
-        }
-        return builder.build();
     }
 }
 ```
@@ -651,7 +640,7 @@ void registerRuntimeInitializedClasses(
 - [ ] **Client creation:** Producer (`@Produces`) or Recorder (synthetic beans)
 - [ ] **CDI registration:** `AdditionalBeanBuildItem` or `SyntheticBeanBuildItem`
 - [ ] **Feature registration:** `FeatureBuildItem` in processor
-- [ ] **Health check:** `@Readiness` health check + `HealthBuildItem` registration + `quarkus-smallrye-health` (optional) in runtime + `quarkus-smallrye-health-spi` in deployment + `healthEnabled` in build-time config. If main API has class-level `@Path`, use a separate health API interface.
+- [ ] **Health check:** `@Readiness` health check + `HealthBuildItem` registration + `quarkus-smallrye-health` (optional) in runtime + `quarkus-smallrye-health-spi` in deployment + `healthEnabled` in build-time config. If main API has class-level `@Path`, use a separate internal health API interface (do NOT expose it as a CDI bean — health check builds its own REST client internally).
 - [ ] **Dev Services:** Container class + processor + build-time config
 - [ ] **SSL native support:** `ExtensionSslNativeSupportBuildItem`
 - [ ] **Native image:** Register reflection, runtime-init classes as needed
