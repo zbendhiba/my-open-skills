@@ -1,6 +1,8 @@
 # My Open Skills
 
-A collection of reusable [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/skills) and [commands](https://docs.anthropic.com/en/docs/claude-code/slash-commands) for software development workflows, with a focus on Quarkus extension development and open-source contribution.
+A collection of my personal [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/skills) and [commands](https://docs.anthropic.com/en/docs/claude-code/slash-commands) for software development workflows, with a focus on Quarkus extension development and open-source contribution.
+
+**These reflect my own workflow and conventions.** Please read them and check if they are useful for you before using. If you spot misinformation, please [open an issue](../../issues).
 
 ## Skills
 
