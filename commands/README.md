@@ -9,7 +9,7 @@ Reviews PRs for my own Quarkiverse extension projects (quarkus-qdrant, quarkus-s
 **Key aspects:**
 - Quarkus extension structure (module layout, Jandex, build items, Dev Services)
 - Upstream Quarkus commit/PR conventions (no Conventional Commits prefixes)
-- Co-Authored-By included (Apache project norms)
+- No Co-Authored-By for AI tools (same policy as upstream Quarkus)
 - Runtime patterns (`@ConfigRoot` phase, recorder constraints, CDI)
 - Health checks, testing (`overrideConfigKey` vs `overrideRuntimeConfigKey`)
 - Writing style (no marketing filler, match sibling modules)
