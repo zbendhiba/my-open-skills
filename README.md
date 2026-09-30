@@ -82,3 +82,18 @@ Copy the skill folders into your `~/.claude/skills/` directory and the command f
 ## License
 
 Open source — feel free to use, modify, and share.
+
+## Camel Spec Driven Development (SDD)
+
+**Start here: [PIPELINE.md](PIPELINE.md)** shows the whole flow on one page: which skill, when, on which model, and what bounds each step.
+
+A six-skill pipeline plus shell runners for agentic development on Apache Camel, built around one rule: agents never retry.
+
+**Skills:** [camel-sdd-spec](skills/camel-sdd-spec/) > [camel-sdd-review-spec](skills/camel-sdd-review-spec/) > [camel-sdd-design](skills/camel-sdd-design/) > [camel-sdd-plan](skills/camel-sdd-plan/) > [camel-sdd-task](skills/camel-sdd-task/), with [camel-sdd-repair](skills/camel-sdd-repair/) when a task fails.
+
+**How it works:**
+- Thinking phase (spec, design, plan) runs on frontier models: Claude Fable, Opus, or IBM Bob in plan mode. The plan emits self-contained task files.
+- Execution phase runs each task file on Claude Sonnet/Haiku or IBM Bob in code mode, via the [scripts/sdd](scripts/sdd/) runners.
+- Hard bounds everywhere: wall-clock timeout, budget cap, attempt ledger, scope check on every "done" claim. A failed task stops with an analysis. Repairs go to the artifact (task file, design, or spec), never to the code.
+
+See [scripts/sdd/README.md](scripts/sdd/README.md) for runner usage and exit codes.
